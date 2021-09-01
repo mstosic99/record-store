@@ -1,8 +1,8 @@
 const express = require('express');
 const Joi = require('joi');
 const mysql = require('mysql');
-let jwt = require('jsonwebtoken');
-const secretKey = "osjecamgolasiispodhaljine";
+var jwt = require('jsonwebtoken');
+const secretKey = "osecamgolasi";
 
 const bodyParser = require('body-parser')
 const jsonParser = bodyParser.json()
@@ -14,46 +14,46 @@ const pool = mysql.createPool({
     host: 'localhost',
     user: 'root',
     password: '',
-    database: 'webshop_v3',
+    database: 'recordstore',
 });
 
 
 const route = express.Router();
 
-const registerSchema = Joi.object().keys({
-    username: Joi.string().min(5).max(40).required(),
-    password: Joi.string().min(5).max(15).required(),
-    name: Joi.string().min(2).max(20),
-    lastname: Joi.string().min(2).max(20),
+const registerScheme = Joi.object().keys({
+    username: Joi.string().min(5).max(45).required(),
+    password: Joi.string().min(5).max(50).required(),
+    name: Joi.string().min(2).max(25),
+    lastname: Joi.string().min(2).max(25),
     email: Joi.string().email(),
     phone: Joi.number()
 });
 
-const loginSema = Joi.object().keys({
-    username: Joi.string().min(5).max(40).required(),
-    password: Joi.string().min(5).max(15).required()
+const loginScheme = Joi.object().keys({
+    username: Joi.string().min(5).max(45).required(),
+    password: Joi.string().min(5).max(50).required()
 });
 
-const addressSchema = Joi.object().keys({
-    address: Joi.string().min(5).max(40).required(),
+const addressScheme = Joi.object().keys({
+    address: Joi.string().min(5).max(45).required(),
     zipcode: Joi.number()
 });
 route.use(express.json());
 
 
-route.get('/products', (req, res) => {
+route.get('/records', (req, res) => {
 
-    pool.query('select * from Products p INNER JOIN Manifacturer m on p.manifacturer_id = m.manifacturer_id WHERE p.stock > 0', (err, rows) => {
+    pool.query('select * from Records r INNER JOIN Artists a on r.artist_id = a.artist_id', (err, rows) => {
         if (err) {
-            res.status(500).send(err.sqlMessage); // Greska servera
+            res.status(500).send(err.sqlMessage);
         } else
             res.send(rows);
     });
 });
 
 
-route.get('/products/:id', (req, res) => {
-    var query = 'select * from Products where product_name=?';
+route.get('/records/:id', (req, res) => {
+    var query = 'select * from Records where record_id=?';
     let formated = mysql.format(query, [req.params.id]);
 
     pool.query(formated, (err, rows) => {
@@ -64,13 +64,13 @@ route.get('/products/:id', (req, res) => {
     });
 });
 
-route.get('/products/sort/:id', (req, res) => {
+route.get('/records/sort/:id', (req, res) => {
     if (req.params.id == 1)
-        var col = 'product_name';
+        var col = 'title';
     else if (req.params.id == 2)
-        var col = 'category_id';
+        var col = 'genre_id';
     else var col = 'price';
-    var query = 'select * from Products order by ' + col + ' ASC';
+    var query = 'select * from Records order by ' + col + ' ASC';
     pool.query(query, (err, rows) => {
         if (err)
             res.status(500).send(err.sqlMessage);
@@ -94,7 +94,7 @@ route.post('/addresses', (req, res) => {
 });
 
 route.post('/address', (req, res) => {
-    let { error } = addressSchema.validate({ address: req.body.address, zipcode: req.body.zipcode });
+    let { error } = addressScheme.validate({ address: req.body.address, zipcode: req.body.zipcode });
 
 
     if (error)
@@ -126,8 +126,8 @@ route.post('/get_orders', (req, res) => {
     var token = req.body.token;
     var decoded = jwt.verify(token, secretKey);
     console.log(decoded);
-    var query = 'select * from Orders where user_id = ?'
-    let formated = mysql.format(query, [decoded.user_id]);
+    var query = 'select * from Orders where ? = (select a.user_id from Addresses a where a.address_id = ?)' // Test this
+    let formated = mysql.format(query, [decoded.user_id, decoded.user_id]);
     pool.query(formated, (err, rows) => {
         if (err)
             res.status(500).send(err.sqlMessage);
@@ -139,14 +139,21 @@ route.post('/get_orders', (req, res) => {
 
 route.post('/orders', (req, res) => {
     var orderId = 0;
-    let query = "insert into Orders (user_id, datetime, status, price, address_id) values (?, ?, ?, ?, ?)";
+    let query = "insert into Orders (datetime, status, price, address_id) values (?, ?, ?, ?)"; // ADDRESS PREKO USER_ID
     var token = req.body.token;
     var decoded = jwt.verify(token, secretKey);
-    let formated = mysql.format(query, [parseInt(decoded.user_id), new Date().toISOString().slice(0, 19).replace('T', ' '), 0, req.body.price, req.body.address_id]);
+    let queryGetUserId = mysql.format("select user_id from Addresses a where a.user_id = ?", parseInt(decoded.user_id));
+    pool.query(queryGetUserId, (err, response) => {
+        if (err)
+            res.status(500).send(err.sqlMessage);
+        // if (response.user_id == null)
+        //     res.status(400).send("Address provided doesn't match with the current user."); // TEST
+    });
+    let formated = mysql.format(query, [new Date().toISOString().slice(0, 19).replace('T', ' '), 0, req.body.price, req.body.address_id]);
     pool.query(formated, (err, response) => {
-        if (req.body.address_id == -1)
-            res.status(500).send('Please select address!');
-        else if (err)
+        // if (req.body.address_id == -1)
+        // res.status(500).send('Please select address!');
+        if (err)
             res.status(500).send(err.sqlMessage);
         else {
             query = 'select * from Orders where order_id=?';
@@ -157,8 +164,8 @@ route.post('/orders', (req, res) => {
 
                 var cart = req.body.cart;
                 for (var i = 0; i < cart.length; i++) {
-                    let query = "insert into Carts (order_id, product_id, quantity) values (?, ?, ?)";
-                    let format = mysql.format(query, [orderId, cart[i].product_id, cart[i].stock]);
+                    let query = "insert into Carts (order_id, record_id, quantity) values (?, ?, ?)";
+                    let format = mysql.format(query, [orderId, cart[i].record_id, cart[i].stock]);
                     pool.query(format, (err, response) => {
                         console.log(err);
                     });
@@ -171,7 +178,7 @@ route.post('/orders', (req, res) => {
 });
 
 route.post('/login', jsonParser, (req, res) => {
-    let { error } = loginSema.validate(req.body);
+    let { error } = loginScheme.validate(req.body);
     console.log(req.body.username)
     console.log(req.body.password)
     if (error) {
@@ -181,17 +188,18 @@ route.post('/login', jsonParser, (req, res) => {
         const password = req.body.password;
 
         if (username && password) {
+            console.log(username);
             pool.query('SELECT * FROM Users WHERE username = ?', [username],
                 (error, results, fields) => {
                     if (results.length == 0)
-                        res.status(400).send('Wrong user/password');
+                        res.status(400).send('Wrong username/password');
                     else {
-                        pass = results[0].password;
+                        let pass = results[0].password;
                         console.log(results[0]);
                         console.log(pass);
-                        if (bcrypt.compareSync(password, pass)) {
+                        if (bcrypt.compare(password, pass)) {
                             console.log("success");
-                            var token = jwt.sign({ user_id: results[0].user_id }, secretKey);
+                            var token = jwt.sign({ user_id: results[0].user_id }, secretKey); // CHECK
                             res.send({ 'token': token });
                         } else {
                             res.send({ 'token': '' });
@@ -208,7 +216,7 @@ route.post('/login', jsonParser, (req, res) => {
 });
 
 route.post('/register', jsonParser, (req, res) => {
-    let { error } = registerSchema.validate(req.body);
+    let { error } = registerScheme.validate(req.body);
     if (error) {
         console.log(error)
         res.status(400).send(error.details[0].message);
@@ -216,10 +224,10 @@ route.post('/register', jsonParser, (req, res) => {
         console.log('here');
         const username = req.body.username;
         const email = req.body.email;
-        var password = req.body.password;
-        var name = req.body.name;
-        var lastname = req.body.lastname;
-        var phone = req.body.phone;
+        let password = req.body.password;
+        let name = req.body.name;
+        let lastname = req.body.lastname;
+        let phone = req.body.phone;
         let errors = [];
 
         //Check required fields
@@ -238,8 +246,8 @@ route.post('/register', jsonParser, (req, res) => {
                         console.log(err);
                     });
                 });
-                res.send({ msg: 'uspesna registracija' });
-                console.log("uspesna registracija");
+                res.send({ msg: 'Successful Registration' });
+                console.log("Successful Registration");
             } else {
                 res.send('Enter Email');
             };

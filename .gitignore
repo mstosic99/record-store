@@ -114,4 +114,5 @@ pnpm-debug.log*
 *.sln
 *.sw?
 
+# Remove before deploy
 src/*

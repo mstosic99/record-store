@@ -12,7 +12,7 @@ app.use(function(req, res, next) {
     next();
 });
 
-app.use('/routes/api', api);
+app.use('/api', api);
 
 const staticMiddleware = express.static(path.join(__dirname, 'dist'));
 
