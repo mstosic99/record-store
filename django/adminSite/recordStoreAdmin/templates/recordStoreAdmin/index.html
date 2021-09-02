@@ -1,0 +1,19 @@
+{% extends 'master.html' %} {% block content %} {% if error %} {% for field, errors in error %} {% for e in errors %}
+<div class="alert alert-danger" role="alert">
+    {{field}} : {{e}}
+</div>
+{% endfor %} {% endfor %} {% endif %}
+<h1>Confirm orders</h1>
+<form action="{% url 'recordStoreAdmin:index' token %}" method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+        <labelclass="form-label">Orders</label>
+            <select name="order_id" class="form-select" aria-label="Default select example">
+            {% for o in order_list %}
+            <option value="{{o.order_id}}">{{o}}</option>
+            {% endfor %}
+          </select>
+    </div>
+    <input type="submit" value="Save">
+</form>
+{% endblock %}

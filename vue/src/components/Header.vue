@@ -55,7 +55,7 @@
               ></b-dropdown-item
             >
           </b-nav-item-dropdown>
-          <b-button @click="manageOrders" size="sm" class="ml-2"
+          <b-button v-if="is_admin" @click="manageOrders" size="sm" class="ml-2"
             >Manage orders</b-button
           >
           <b-button v-if="is_admin" @click="add_record" size="sm" class="ml-2"
@@ -114,10 +114,10 @@ export default {
       this.empty_cart();
     },
     add_record: function () {
-      window.location = "http://localhost:8081/add_record/" + this.token;
+      window.location = "http://localhost:8000/add_record/" + this.token;
     },
     manageOrders: function () {
-      window.location = "http://localhost:8081/" + this.token;
+      window.location = "http://localhost:8000/" + this.token;
     },
     logout: function () {
       this.delete_token();

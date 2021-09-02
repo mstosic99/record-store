@@ -1,0 +1,47 @@
+{% extends 'master.html' %} {% block content %} {% if error %} {% for field, errors in error %} {% for e in errors %}
+<div class="alert alert-danger" role="alert">
+    {{field}} : {{e}}
+</div>
+{% endfor %} {% endfor %} {% endif %}
+<h1>Add record</h1>
+<form action="{% url 'recordStoreAdmin:add_record' token %}" method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+        <labelclass="form-label">Genre</label>
+            <select name="genre" class="form-select" aria-label="Default select example">
+            {% for g in genre_list %}
+            <option value="{{g.genre_id}}">{{g.genre}}</option>
+            {% endfor %}
+          </select>
+    </div>
+    <div class="mb-3">
+        <labelclass="form-label">Artist</label>
+            <select name="artist" class="form-select" aria-label="Default select example">
+            {% for a in artist_list %}
+            <option value="{{a.artist_id}}">{{a.name}}</option>
+            {% endfor %}
+          </select>
+    </div>
+    <div class="mb-3">
+        <labelclass="form-label">Title</label>
+            <input type="text" class="form-control" name="title">
+    </div>
+    <div class="mb-3">
+        <labelclass="form-label">Year</label>
+            <input type="number" class="form-control" name="year">
+    </div>
+    <div class="mb-3">
+        <labelclass="form-label">Price</label>
+            <input type="number" class="form-control" name="price">
+    </div>
+    <div class="mb-3">
+        <labelclass="form-label">Image</label>
+            <input type="text" class="form-control" name="image">
+    </div>
+    <div class="mb-3">
+        <labelclass="form-label">Stock</label>
+            <input type="number" class="form-control" name="stock">
+    </div>
+    <input type="submit" value="Save">
+</form>
+{% endblock %}
